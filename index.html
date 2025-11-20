@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>اختبار الضرب</title>
+  <style>
+    body {
+      background: var(--bg-color, #f4f4f4);
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .controls, .question-box, .results, .score-summary {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    input {
+      padding: 10px;
+      width: 100%;
+      font-size: 18px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .hidden { display: none; }
+    .question-number {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .final-result {
+      font-size: 22px;
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .result-item {
+      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+    }
+    .correct { color: green; font-weight: bold; }
+    .wrong { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div id="startPage">
+      <div class="title">اختر العدد</div>
+      <div class="controls">
+        <select id="numberSelect" style="width:100%; padding:10px; font-size:18px; border-radius:10px; border:1px solid #ccc;">
+          <option value="">— اختر —</option>
+          <script>
+            for(let i=1; i<=12; i++){
+              document.write(`<option value="${i}">${i}</option>`);
+            }
+          </script>
+        </select>
+        <br><br>
+        <button onclick="startQuiz()">ابدأ الاختبار</button>
+      </div>
+    </div>
+
+    <div id="quizPage" class="hidden">
+      <div class="question-box">
+        <div id="questionNumber" class="question-number"></div>
+        <div id=\"timer\" style=\"font-size:18px; color:#d00; margin-bottom:10px;\">الوقت: 00:10</div>
+        <div id=\"questionText" style="font-size:22px; font-weight:bold;"></div>
+        <input id="answerInput" type="number" placeholder="اكتب الإجابة هنا" />
+        <br><br>
+        <button onclick="submitAnswer()">التالي</button>
+      </div>
+    </div>
+
+    <div id="resultPage" class="hidden">
+      <div class="score-summary" id="scoreSummary"></div>
+      <div class="results" id="resultsList"></div>
+      <button onclick="saveResult()">حفظ النتيجة</button>
+      <br><br>
+      <button onclick="showStart()">الرجوع للبداية</button>
+    </div>
+
+    <div id="adminLoginPage" class="hidden">
+      <div class="controls">
+        <div class="title">دخول المعلم</div>
+        <input type="password" id="adminPassword" placeholder="اكتب كلمة المرور" />
+        <br><br>
+        <button onclick="adminLogin()">دخول</button>
+      </div>
+    </div>
+
+    <div id="adminPage" class="hidden">
+      <div class="title">نتائج الطلاب</div>
+      <div class="results" id="adminResults"></div>
+      <button onclick="showStart()">رجوع</button>
+    </div>
+
+  </div>
+
+<script>
+let selectedNumber;
+let questions = [];
+let currentIndex = 0;
+let answers = [];
+
+function startQuiz(){
+  selectedNumber = document.getElementById('numberSelect').value;
+  if(!selectedNumber) return alert('اختر رقم أولاً');
+
+  questions = Array.from({length:10}, (_,i)=>{
+    let b = Math.floor(Math.random()*selectedNumber)+1;
+    return { a: Number(selectedNumber), b, correct: Number(selectedNumber)*b };
+  });
+
+  currentIndex = 0;
+  answers = [];
+
+  showPage('quizPage');
+  loadQuestion();
+  startTimer();
+}
+
+function loadQuestion(){
+  const q = questions[currentIndex];
+  document.getElementById('questionNumber').innerText = `السؤال ${currentIndex+1} من 10`;
+  document.getElementById('questionText').innerText = `${q.a} × ${q.b} = ؟`;
+  document.getElementById('answerInput').value = '';
+  document.getElementById('answerInput').focus();
+}
+
+function submitAnswer(){
+  const input = document.getElementById('answerInput').value;
+  if(input === '') return alert('اكتب إجابة');
+
+  answers.push({
+    ...questions[currentIndex],
+    user: Number(input),
+    isCorrect: Number(input) === questions[currentIndex].correct
+  });
+
+  currentIndex++;
+  if(currentIndex < 10){ loadQuestion(); }
+  else { showResults(); }
+}
+
+function showResults(){
+  showPage('resultPage');
+
+  let score = answers.filter(a=>a.isCorrect).length;
+  document.getElementById('scoreSummary').innerHTML = `النتيجة: <strong>${score} / 10</strong>`;
+
+  let html = '';
+  answers.forEach((a,i)=>{
+    html += `
+      <div class='result-item'>
+        <div>السؤال ${i+1}: ${a.a} × ${a.b}</div>
+        <div>إجابتك: <span class='${a.isCorrect?'correct':'wrong'}'>${a.user}</span></div>
+        <div>الإجابة الصحيحة: ${a.correct}</div>
+      </div>
+    `;
+  });
+
+  document.getElementById('resultsList').innerHTML = html;
+}
+
+function saveResult(){
+  let name = prompt('اكتب اسم الطالب:');
+  if(!name) return;
+
+  let score = answers.filter(a=>a.isCorrect).length;
+  let all = JSON.parse(localStorage.getItem('quizResults') || '[]');
+
+  all.push({ name, number: selectedNumber, score, date: new Date().toLocaleString() });
+
+  localStorage.setItem('quizResults', JSON.stringify(all));
+  alert('تم حفظ النتيجة');
+}
+
+function adminLogin(){
+  const pass = document.getElementById('adminPassword').value;
+  if(pass !== '0000') return alert('كلمة مرور غير صحيحة');
+
+  showAdminPage();
+}
+
+function showAdminPage(){
+  showPage('adminPage');
+
+  let all = JSON.parse(localStorage.getItem('quizResults') || '[]');
+
+  all.sort((a,b)=>b.score-a.score);
+
+  let html = '';
+  all.forEach(r=>{
+    html+=`
+      <div class='result-item'>
+        <strong>${r.name}</strong> — الدرجة: ${r.score}/10 — جدول: ${r.number} — ${r.date}
+      </div>`
+  });
+
+  document.getElementById('adminResults').innerHTML = html;
+}
+
+function showStart(){ showPage('startPage'); }
+function showAdmin(){ showPage('adminLoginPage'); }
+
+function showPage(id){
+  ['startPage','quizPage','resultPage','adminLoginPage','adminPage']
+    .forEach(p=>document.getElementById(p).classList.add('hidden'));
+
+  document.getElementById(id).classList.remove('hidden');
+}
+</script>
+
+<script>
+let timeLeft = 30;
+let timerInterval;
+function startTimer(){
+  timeLeft = 30;
+  document.getElementById('timer').innerText = `الوقت: 00:${timeLeft}`;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    document.getElementById('timer').innerText = `الوقت: 00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
+    if(timeLeft <= 0){ clearInterval(timerInterval); submitAnswer(); }
+  },1000);
+}
+</script>
+</body>
+</html>
